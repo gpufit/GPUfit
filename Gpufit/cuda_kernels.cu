@@ -949,6 +949,7 @@ __global__ void cuda_modify_step_widths(
 __global__ void cuda_update_parameters(
     REAL * parameters,
     REAL * prev_parameters,
+    REAL const * parameter_constraints,
     REAL const * deltas,
     int const n_parameters_to_fit,
     int const * parameters_to_fit_indices,
@@ -965,6 +966,8 @@ __global__ void cuda_update_parameters(
 
     current_prev_parameters[parameter_index] = current_parameters[parameter_index];
 
+    REAL const * current_constraint = parameter_constraints ? &parameter_constraints[fit_index * n_parameters*2] : NULL;
+
     if (finished[fit_index])
     {
         return;
@@ -978,6 +981,17 @@ __global__ void cuda_update_parameters(
     REAL const * current_deltas = &deltas[fit_index * n_parameters_to_fit];
 
     current_parameters[parameters_to_fit_indices[parameter_index]] += current_deltas[parameter_index];
+    if (current_constraint)
+    {
+		if (current_parameters[parameters_to_fit_indices[parameter_index]]<current_constraint[parameters_to_fit_indices[parameter_index]*2+0])
+		{
+			current_parameters[parameters_to_fit_indices[parameter_index]]=current_constraint[parameters_to_fit_indices[parameter_index]*2+0];
+		}
+		if (current_parameters[parameters_to_fit_indices[parameter_index]]>current_constraint[parameters_to_fit_indices[parameter_index]*2+1])
+		{
+			current_parameters[parameters_to_fit_indices[parameter_index]]=current_constraint[parameters_to_fit_indices[parameter_index]*2+1];
+		}
+    }
 }
 
 /* Description of the cuda_update_state_after_solving function
